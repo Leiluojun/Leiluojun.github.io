@@ -6,9 +6,8 @@ categories: diary
 location: Florence, Italy
 description: love markdown, love plain texts. Enjoy its manual
 ---
----
-Markdown manual
-
+这是一首简单的小情歌
+===
 ### 1. 斜体和粗体
 
 使用 * 和 ** 表示斜体和粗体。
