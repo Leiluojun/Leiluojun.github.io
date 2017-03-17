@@ -6,7 +6,7 @@ categories: jekyll theme
 author: yuhj
 cover: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Meisje_met_de_parel.jpg/600px-Meisje_met_de_parel.jpg"
 location: Beijing, China
-description
+description: 移动端IM开发需要面对的技术问题
 ---
 ###IM客户端架构技术浅谈
 ##'前言'
