@@ -4,11 +4,11 @@ baseurl: "" # the subpath of your site, e.g. /blog/
 url: "http://Leiluojun.github.io/" # the base hostname & protocol for your site
 permalink: /:title/
 avatar: https://avatars2.githubusercontent.com/u/9014738?v=3&s=460
-about: http://7xof48.com1.z0.glb.clouddn.com/about.jpg
-favicon: http://7xof48.com1.z0.glb.clouddn.com/favicon.png
+about: http://bbs.wangjing.cn/data/attachment/forum/201602/29/171941hpfv915u93qxlf58.jpg
+favicon: https://avatars2.githubusercontent.com/u/9014738?v=3&s=460
 basecss: 
 # Theme specific configuration
-title: songroger
+title: yuhj
 description: >
    禹慧军,今日头条Android开发工程师,希望可以跟大家一起交流技术～
 # Contact and social media links
