@@ -4,9 +4,9 @@ title:  "IM客户端架构技术浅谈"
 date:   2017-03-21 13:05:14 +0100
 categories: jekyll theme
 author: yuhj
-cover: ""
+cover: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Meisje_met_de_parel.jpg/600px-Meisje_met_de_parel.jpg"
 location: Beijing, China
-description: 移动端IM开发需要面对的技术问题
+description: 本人之前从事过一段时间Android端IM SDK的开发，期间也做了许多技术调研以及踩了很多坑，现在我统一介绍下一个IM APP的方方面面，包括技术选型（包括通讯方式，网络连接方式，协议选择）和常见问题。
 ---
 ## 前言
 本人之前从事过一段时间Android端IM SDK的开发，期间也做了许多技术调研以及踩了很多坑，现在我统一介绍下一个IM APP的方方面面，包括技术选型（包括通讯方式，网络连接方式，协议选择）和常见问题。
