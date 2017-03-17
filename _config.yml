@@ -1,7 +1,7 @@
 # Site configuration
 domain: "http://songroger.win"
 baseurl: "" # the subpath of your site, e.g. /blog/
-url: "http://songroger.github.io/" # the base hostname & protocol for your site
+url: "http://Leiluojun.github.io/" # the base hostname & protocol for your site
 permalink: /:title/
 avatar: https://avatars2.githubusercontent.com/u/9014738?v=3&s=460
 about: http://7xof48.com1.z0.glb.clouddn.com/about.jpg
@@ -10,7 +10,7 @@ basecss:
 # Theme specific configuration
 title: songroger
 description: >
-   禹慧军,今日头条Android开发工程师～
+   禹慧军,今日头条Android开发工程师,希望可以跟大家一起交流技术～
 # Contact and social media links
 twitter_username: yuhj
 github_username: Leiluojun
