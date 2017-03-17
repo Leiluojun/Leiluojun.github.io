@@ -1,4 +1,4 @@
-# Hexo Configuration
+ls# Hexo Configuration
 ## Docs: https://hexo.io/docs/configuration.html
 ## Source: https://github.com/hexojs/hexo/
 
@@ -63,7 +63,7 @@ pagination_dir: page
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: maupassant
+theme: maupassant-HEXO
 
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
