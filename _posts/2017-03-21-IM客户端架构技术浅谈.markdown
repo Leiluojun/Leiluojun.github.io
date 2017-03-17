@@ -4,7 +4,7 @@ title:  "IM客户端架构技术浅谈"
 date:   2017-03-21 13:05:14 +0100
 categories: jekyll theme
 author: yuhj
-cover: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Meisje_met_de_parel.jpg/600px-Meisje_met_de_parel.jpg"
+cover: ""
 location: Beijing, China
 description: 移动端IM开发需要面对的技术问题
 ---
