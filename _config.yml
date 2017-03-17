@@ -5,7 +5,7 @@ url: "http://Leiluojun.github.io/" # the base hostname & protocol for your site
 permalink: /:title/
 avatar: https://avatars2.githubusercontent.com/u/9014738?v=3&s=460
 about: http://bbs.wangjing.cn/data/attachment/forum/201602/29/171941hpfv915u93qxlf58.jpg
-favicon: https://avatars2.githubusercontent.com/u/9014738?v=3&s=460
+favicon: https://github.com/fluidicon.png
 basecss: 
 # Theme specific configuration
 title: yuhj
