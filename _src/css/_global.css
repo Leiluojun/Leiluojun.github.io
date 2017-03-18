@@ -38,7 +38,7 @@
 }
 
 html {
-  font-size: 109.375%;
+  font-size:60%;
   -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
   font-smoothing: antialiased;
@@ -69,7 +69,7 @@ html {
 body {
   color: var(--color-text);
   font-family: Georgia,'Source Sans Pro', sans-serif;
-  font-size: 0.7rem;
+  font-size: 0.4rem;
   line-height: 1.6rem;
 
 
