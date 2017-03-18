@@ -70,48 +70,25 @@ IM协议选择原则一般是：易于拓展，方便覆盖各种业务逻辑，
 
 ##### 协议格式设计
 基于TCP的应用层协议一般都分为包头和包体(如HTTP)，IM协议也不例外。包头一般用于表示每个请求/反馈的公共部分，如包长，请求类型，返回码等。 而包头则填充不同请求/反馈对应的信息。<br>
-
- 
-	public class ClientBytesParser {
-
-    /**
+```java
+    public class ClientBytesParser {   /**
      *  协议头（2 byte）：
      */
-    public static final int PROTOCOL_HEADRE;
-
-    /**
+    public static final int PROTOCOL_HEADRE;   /**
      * 0x01 （目前为第一个版本）
      */
-    public static final int PROTOCOL_VERSION  ;
-
-    /**
-     * 比特标志位（1 byte）： 0 ack，是否需要消息回执 1 zip，body是否压缩 2~7为保留位
-     */
-    public static final int PROTOCOL_MRAK;
-
-    /**
+    public static final int PROTOCOL_VERSION  ;   /**
+     * 比特标志位（1 byte）： 0 ack，是否需要消息回执 1 zip，body是否压缩 2~7为保留位  public static final int PROTOCOL_MRAK;/**
      * 表示请求类型或body的类型
      */
-    public static final int PROTOCOL_TYPE;
-
-    /**
+    public static final int PROTOCOL_TYPE;/**
      * length（2 byte）：body长度
      */
-    public static final int PROTOCOL_LENGTH;
-
-    /**
+    public static final int PROTOCOL_LENGTH;/**
      * RPC （2 byte）：rpc请求的id，需要对方原样返回
      */
     public static final int PROTOCOL_RPC;
-    
-    
-    }
-    
+```  
     
 协议格式可以根据各自的业务需求设置不同，但统一的原则是尽可能的精简，以减少请求的数据量。
 
-
-
-
-
- 
