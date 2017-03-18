@@ -10,9 +10,10 @@ description: 本人之前从事过一段时间Android端IM SDK的开发，期间
 ---
 ## 前言
 本人之前从事过一段时间Android端IM SDK的开发，期间也做了许多技术调研以及踩了很多坑，现在我统一介绍下一个IM APP的方方面面，包括技术选型（包括通讯方式，网络连接方式，协议选择）和常见问题。
+
 <div align=center><img width="300" height="300" src="../preview.png"/></div>
 
-客户端技术浅滩`架构`sdfs 
+客户端技术浅滩`架构`
 
     @Before("lifeCircleForActivity")
     public void printBeferLog(JoinPoint joinPoint) {
