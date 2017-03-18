@@ -1,33 +1,54 @@
-# Site configuration
-domain: "http://songroger.win"
-baseurl: "" # the subpath of your site, e.g. /blog/
-url: "http://Leiluojun.github.io/" # the base hostname & protocol for your site
-permalink: /:title/
-avatar: https://avatars2.githubusercontent.com/u/9014738?v=3&s=460
-about: http://bbs.wangjing.cn/data/attachment/forum/201602/29/171941hpfv915u93qxlf58.jpg
-favicon: https://github.com/fluidicon.png
-basecss: 
-# Theme specific configuration
-title: yuhj
-description: >
-   禹慧军,今日头条Android开发工程师,希望可以跟大家一起交流技术～
-# Contact and social media links
-twitter_username: yuhj
-github_username: Leiluojun
-facebook_username: yuhj
-instagram_username: yuhj
-linkedin_username: yuhj
+# Site Info
+title:              "The Plain"
+description:        "The Plain is a Minimalist Jekyll theme that focuses on writing matters."
+google_verify:      epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o # Put your Google Verification here
+google_analytics:   UA-XXXXXXX-X # Put your Google Analytics code
 
-exclude: ['node_modules', 'gulpfile.js', 'package.json']
+# Author Info
+author_name:        "Heiswayi Nrird"
+author_email:       hnrird@gmail.com
+author_gravatar:    2b38b1b0e7e08b69379bd61582adf0c8 # Gravatar md5 hash
+twitter_username:   HeiswayiNrird
+github_username:    heiswayi # GitHub username
 
+# Site Settings
+baseurl:            "" # Base URL must end WITHOUT a slash, default: ""
+permalink:          /notes/:title # Post permalink
+timezone:           Asia/Kuala_Lumpur # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+mathjax:            true  # enables support for mathjax - set to false to disable
+
+# Site Build
+highlighter:        rouge
+#markdown:           redcarpet
+#redcarpet:
+#    extensions:     ["no_intra_emphasis", "fenced_code_blocks", "autolink", "tables", "with_toc_data", "highlight", "footnotes"]
+markdown:           kramdown
 kramdown:
-  input: GFM
+    input:          GFM
+sass:
+    style:          :compressed
 
-# If U enable the comment, edit disqus or duoshuo account of "/_layouts/post.html"
-# before deploy your webpage
-enable_comment: false
+# Other Params
+include:            [ "robots.txt" ]
+exclude:            [ "LICENSE", "README.md", "CNAME", "vendor", "Gemfile" ]
+gems:
+  - jekyll-sitemap
 
-gems: ['jekyll-paginate']
-# Pagination
-paginate: 5
-paginate_path: /archive/page:num
+
+
+defaults:
+  -
+    scope:
+      path:         ""
+    values:
+      layout:       "null"
+  -
+    scope:
+      type:         "pages"
+    values:
+      layout:       "page"
+  -
+    scope:
+      type:         "posts"
+    values:
+      layout:       "post"

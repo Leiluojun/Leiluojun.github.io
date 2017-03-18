@@ -1,24 +1,16 @@
-  <header class="header">
+<aside class="logo">
 
-    {% if site.avatar %}
-      <div class="header__logo">
-        <a href="{{ site.baseurl }}/" class="header__link--logo">
-        <!-- <div class="spinner"></div> -->
-        <img src="{{ site.avatar }}"></a>
-      </div>
-    {% else %}
-      <h1 class="header__logo">
-        <a href="{{ site.baseurl }}/" class="header__link--logo">{{ site.title }}</a>
-      </h1>
-    {% endif %}
+	{% if page.url == '/index.html' or page.url == '/' %}
+		{% assign link = '/about' %}
+		{% assign prompt = 'About the Author' %}
+	{% else %}
+		{% assign link = '/' %}
+		{% assign prompt = 'Back to Home' %}
+	{% endif %}
 
-    <nav class="header__nav" role="navigation">      
-      <a href="{{ site.baseurl }}/archive/" class="header__link">Archive</a>
-      <a href="https://github.com/Leiluojun" class="header__link" target="_blank">Github</a>
-      <!-- <a href="http://github.com/{{ site.github_username }}" class="header__link" target="_blank">Github</a> -->
-      <a href="http://542661945.qzone.qq.com" class="header__link" target="_blank">QZone</a>
-      <a href="{{ site.baseurl }}/about/" class="header__link">About</a>
-    </nav>
-  </header>
+	<a href="{{ link | prepend: site.baseurl }}">
+		<img src="http://www.gravatar.com/avatar/{{ site.author_gravatar }}.png?s=80" class="gravatar">
+	</a>
+	<span class="logo-prompt">{{ prompt }}</span>
 
-  <main class="col">
+</aside>
