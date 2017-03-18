@@ -38,23 +38,23 @@
 }
 
 html {
-  font-size:60%;
+  font-size: 109.375%;
   -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
   font-smoothing: antialiased;
-  text-size-adjust: 70%;
+  text-size-adjust: 100%;
   box-sizing: border-box;
 }
 
 @media screen and (min-width: 700px) {
   html {
-    font-size: 60%;
+    font-size: 125%;
   }
 }
 
 @media screen and (min-width: 1440px) {
   html {
-    font-size: 70%;
+    font-size: 140.625%;
   }
 }
 
