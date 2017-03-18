@@ -21,3 +21,4 @@ description: 本人之前从事过一段时间Android端IM SDK的开发，期间
     }
     
 
+<div align=center><img width="300" height="300" src="../preview.png"/></div>
