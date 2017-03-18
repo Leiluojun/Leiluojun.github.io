@@ -3,10 +3,8 @@ layout: page
 title: About
 ---
 
-Hello.
+大家好：
 
-The main purpose of this theme is to be as simple as it could be, so you can focus on writing your stuffs. This is your About page. You may describe about yourself here; who you are, what are you currently doing, share some of your projects, your social links and how people can contact you, etc.
+我叫禹慧军，现在今日头条从事Android开发工程师的工作，希望可以和大家一起交流技术。
 
-**Just write thing that matters..**
-
-Enjoy!
+![](image/about/toutiao.jpeg)
