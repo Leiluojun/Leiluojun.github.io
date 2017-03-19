@@ -1,6 +1,6 @@
 # Site Info
 title:              "The Plain"
-description:        "The Plain is a Minimalist Jekyll theme that focuses on writing matters."
+description:        "Android,Java Learning"
 google_verify:      epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o # Put your Google Verification here
 google_analytics:   UA-XXXXXXX-X # Put your Google Analytics code
 
@@ -16,12 +16,6 @@ baseurl:            "" # Base URL must end WITHOUT a slash, default: ""
 permalink:          /notes/:title # Post permalink
 timezone:           Asia/Kuala_Lumpur # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 mathjax:            true  # enables support for mathjax - set to false to disable
-
-#duoshuo
-  comments :
-    provider : duoshuo
-    duoshuo :
-      short_name : yuhj
 # Site Build
 highlighter:        rouge
 #markdown:           redcarpet
