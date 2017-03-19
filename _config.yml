@@ -34,7 +34,11 @@ exclude:            [ "LICENSE", "README.md", "CNAME", "vendor", "Gemfile" ]
 gems:
   - jekyll-sitemap
 
-
+#duoshuo
+  comments :
+    provider : duoshuo
+    duoshuo :
+      short_name : yuhj
 
 defaults:
   -
