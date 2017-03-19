@@ -49,3 +49,8 @@ defaults:
       type:         "posts"
     values:
       layout:       "post"
+#duoshuo
+  comments :
+    provider : duoshuo
+    duoshuo :
+      short_name : yuhj
