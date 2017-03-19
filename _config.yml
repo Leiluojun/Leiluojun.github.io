@@ -17,6 +17,11 @@ permalink:          /notes/:title # Post permalink
 timezone:           Asia/Kuala_Lumpur # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 mathjax:            true  # enables support for mathjax - set to false to disable
 
+#duoshuo
+  comments :
+    provider : duoshuo
+    duoshuo :
+      short_name : yuhj
 # Site Build
 highlighter:        rouge
 #markdown:           redcarpet
@@ -33,12 +38,6 @@ include:            [ "robots.txt" ]
 exclude:            [ "LICENSE", "README.md", "CNAME", "vendor", "Gemfile" ]
 gems:
   - jekyll-sitemap
-
-#duoshuo
-  comments :
-    provider : duoshuo
-    duoshuo :
-      short_name : yuhj
 
 defaults:
   -
