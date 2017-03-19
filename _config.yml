@@ -28,10 +28,10 @@ kramdown:
 sass:
     style:          :compressed
 #duoshuo
-  comments :
-    provider : duoshuo
-    duoshuo :
-      short_name : yuhj
+  comments:
+    provider: duoshuo
+    duoshuo:
+      short_name: yuhj
 # Other Params
 include:            [ "robots.txt" ]
 exclude:            [ "LICENSE", "README.md", "CNAME", "vendor", "Gemfile" ]
