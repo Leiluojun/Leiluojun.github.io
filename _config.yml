@@ -49,12 +49,12 @@ kramdown:
 
 
 # Disqus settings
-disqus_username: yuhuijun
+#disqus_username: yuhuijun
 
 # Duoshuo settings
-duoshuo_username: yuhuijun
+#duoshuo_username: yuhuijun
 # Share component is depend on Comment so we can NOT use share only.
-duoshuo_share: true                     # set to false if you want to use Comment without Sharing
+# duoshuo_share: false                     # set to false if you want to use Comment without Sharing
 
 
 
@@ -91,7 +91,7 @@ service-worker: true
 # Friends
 friends: [
     {
-        title: "MaZiXuan",
-        href: "http://www.baidu.com"
+        title: "Evilsoulm",
+        href: "http://evilsoulm.com"
     },
 ]
