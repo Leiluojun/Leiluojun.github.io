@@ -4,8 +4,8 @@ SEOTitle: 禹慧军的博客 | Yuhj Blog
 header-img: img/home-bg.jpg
 email: lin5667181@163.com
 description: "Android & Mobile Lover | 这里是 @Yuhj 禹慧军的个人博客，与你一起发现更大的世界。"
-keyword: "禹慧军, yuhj, 禹慧军的博客, Yuhj Blog, 博客, 个人网站, 互联网,"
-url: ""              # your host, for absolute URL
+keyword: "禹慧军, yuhj, 禹慧军的博客, Yuhj Blog, 博客, 个人网站, 互联网,Android"
+url: "https://github.com/Leiluojun"              # your host, for absolute URL
 baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'
 
 
@@ -18,7 +18,7 @@ github_username:    Leiluojun
 #twitter_username:  huxpro
 facebook_username:  yuhj
 # linkedin_username:  firstname-lastname-idxxxx
-tags: "Android,Java,Developer"
+
 
 
 
