@@ -1,0 +1,59 @@
+---
+layout:     post
+title:      "Android 性能优化之网络优化"
+subtitle:   ""
+date:       2017-04-13 11:02:14
+author:     "Yuhj"
+header-img: "img/post-bg-nextgen-web-pwa.jpg"
+header-mask: 0.3
+catalog:    true
+description: App网络性能优化方面的一些实践经验。
+tags:
+    - Android
+    - 推送
+    - 进程保活
+    
+---
+## 引言
+移动互联网发展到现在，用户的联网方式已经完成了由流量依赖到Wifi依赖的转变。虽然网络环境在变好，但也对网络的应用提出了更高的要求，同时开发人员对网络的重视度却在下降。确实Wifi场景下用户的网络质量变好了，而且用户对网络流量消耗的敏感度也在下降。但是对网络问题的忽视，在网络状态不好的场景下，会表现的很明显。
+![](/image/2017-4-24/network_statistics.png)
+
+## 网络问题
+### 流量消耗
+过多以及没有经过处理的网络请求，会消耗用户的网络流量。Android用户一般都会安装手机管理类App，可以方便清楚查看到每个App耗费的流量，高流量消耗会导致经常处于非Wifi场景下的用户卸载。
+
+### 电量消耗
+大量的网络请求容易导致电量快速消耗。
+
+### 用户体验差
+网络请求慢，必然造成用户在获取数据时等待较长的时间，虽然大部分APP都会采用loadding图来减少视觉层次的等待时间，但这个并不能从根本解决问题，用户等待的绝对时间并没有减少。例如小黄车每次请求数据的时间都让我难以忍受。
+### 其他
+服务端下发的一些配置或者插件，我们肯定希望越早越快下载到本地好，因为等待的时间越长，就越有可能出现意外，比如用户主动杀掉软件等。
+
+## 网络监控
+
+### Network Monitor
+Android Studio自带的Network Monitor简单直观，可以看出时间段之内的网络请求数量及访问速率；
+![](/image/2017-4-24/network1.png)
+
+### Stetho
+[Stetho](https://github.com/facebook/stetho)是Facebook出品的一个Android应用的调试工具。无需Root即可通过Chrome，在Chrome Developer Tools中可视化查看应用布局，网络请求，sqlite，preference等。同样集成了Stetho之后也可以很方便的查看网络请求的各种情况。
+![](/image/2017-4-24/network2.png)
+
+### network-connection-class
+[network-connection-class](https://github.com/facebook/network-connection-class)是一个Facebook出品的用于检测网络质量和变化的Android库，可以让你了解当前用户的互联网连接的质量。 连接被分为几个“连接类”，这使得它易于开发。 该Library通过聆听您应用程序完成的现有互联网流量来完成此操作，并在用户的连接质量更改时通知您。 然后，开发人员可以使用此Connection类信息并调整应用程序的行为（请求较低质量的图像或视频，节气门类型提前等）。`network-connection-class`目前仅测量用户的下行带宽。 
+![](/image/2017-4-24/network3.png)
+> ConnectionQuality cq = ConnectionClassManager.getInstance().getCurrentBandwidthQuality();
+可以通过上面的方法来获取网络质量。
+>  ConnectionClassManager.getInstance().getDownloadKBitsPerSecond()
+通过上面的方法来获取平均网速。
+
+
+```java
+// Override ConnectionClassStateChangeListener
+ConnectionClassManager.getInstance().register(mListener);
+DeviceBandwidthSampler.getInstance().startSampling();
+// Do some downloading tasks
+DeviceBandwidthSampler.getInstance().stopSampling();
+```
+## 网络优化
