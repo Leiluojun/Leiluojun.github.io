@@ -1,0 +1,485 @@
+---
+layout:     post
+title:      "拒绝使用Android Fragment"
+subtitle:   ""
+date:       2017-05-21 16:50:05
+author:     "Yuhj"
+header-img: "img/post-bg-nextgen-web-pwa.jpg"
+header-mask: 0.3
+catalog:    true
+description: Good code is like a good joke — it requires no explanation.
+tags:
+    - Android    
+    - Fragment
+ 
+    
+---
+
+## 前言
+
+2011年，我们决定使用Fragment，原因如下：
+
+- 在这个时候，我们还没有支持平板电脑，但知道我们最终想要的。Fragment帮助构建响应式UI。
+- Fragment是视图控制器; 他们可以提供解耦的可以单独此事的业务逻辑块。
+- Fragment有自己的回退栈管理。
+- 因为Fragment是建立在视图之上的，视图可以很容易地实现动画，Fragment将使我们更好地控制View变换。
+- Google推荐使用Fragment，我们希望使我们的代码标准化。
+
+而现在，我们发现Square似乎是更好的解决方案。
+
+## 关于Fragment
+### 生命周期
+在Android中，Context是一个上帝对象，Activity是一个具有额外生命周期的上下文。一个有生命周期的神？但是Fragment不是神，而是通过具有非常复杂的生命周期来弥补。<br>
+`Steve Pomeroy`先生给出了Fragment的完整的生命周期，看起来非常复杂：
+![](https://cdn-images-1.medium.com/max/800/0*YWCr1M1pwWfvCzvZ.png)
+
+Fragment复杂的生命周期使得你很难弄清楚应该对每个回调做些什么。它们是同步还是异步？按什么顺序执行？
+
+### 很难调试
+当你的应用程序发生错误时，你可以调试器并逐步执行代码，以了解正在发生的事情。它通常工作的很顺利。。。直到你进入了`FragmentManagerImpl`这个类，你会发现你似乎猜到了地雷？
+你会发现这个类的代码很难追踪和调试，这使得你很难定位并解决问题。
+
+```java
+switch (f.mState) {
+    case Fragment.INITIALIZING:
+        if (f.mSavedFragmenttate != null) {
+            f.mSavedViewState = f.mSavedFragmenttate.getSparseParcelableArray(
+                    FragmentManagerImpl.VIEW_STATE_TAG);
+            f.mTarget = getFragment(f.mSavedFragmenttate,
+                    FragmentManagerImpl.TARGET_STATE_TAG);
+            if (f.mTarget != null) {
+                f.mTargetRequestCode = f.mSavedFragmenttate.getInt(
+                        FragmentManagerImpl.TARGET_REQUEST_CODE_STATE_TAG, 0);
+            }
+            f.mUserVisibleHint = f.mSavedFragmenttate.getBoolean(
+                    FragmentManagerImpl.USER_VISIBLE_HINT_TAG, true);
+            if (!f.mUserVisibleHint) {
+                f.mDeferStart = true;
+                if (newState > Fragment.STOPPED) {
+                    newState = Fragment.STOPPED;
+                }
+            }
+        }
+// ...
+}
+```
+相信经常使用Fragment的同学肯定遇到各种各样的`IllegalStateException`,其中心酸，就不再此赘言了。<br>
+`PS:`嵌套使用Fragment更容易出现这个问题。
+
+### View controllers
+
+Fragment作为View controllers？这个似乎不是一个好好的选择。因为Fragment的创建，绑定和配置视图的过程，包含大量与视图相关的代码。这也就意味着业务逻辑不会与视图代码分离 ——使得难以对片段编写单元测试。
+
+### Fragment transactions
+Fragment transactions允许你执行一组Fragment操作。但是不幸的是，提交事务是异步的，并post在主线程处理程序队列的末尾。当你收到多个点击事件或配置更改时，这可能会使应用程序处于未知状态。
+
+```java
+class BackStackRecord extends FragmentTransaction {
+    int commitInternal(boolean allowStateLoss) {
+        if (mCommitted)
+            throw new IllegalStateException("commit already called");
+        mCommitted = true;
+        if (mAddToBackStack) {
+            mIndex = mManager.allocBackStackIndex(this);
+        } else {
+            mIndex = -1;
+        }
+        mManager.enqueueAction(this, allowStateLoss);
+        return mIndex;
+    }
+}
+```
+
+### Fragment 创建
+
+Fragment实例可以由你手动创建或者由片段管理器创建。这段代码似乎相当合理：
+
+```java
+DialogFragment dialogFragment = new DialogFragment() {
+  @Override public Dialog onCreateDialog(Bundle savedInstanceState) { 
+  ...
+   }
+};
+dialogFragment.show(fragmentManager, tag);
+```
+
+但是，当Fragment因为被销毁而恢复实例状态时，`FragmentManager`可能会尝试使用`反射`来重新创建该Fragment类的实例。由于它是一个匿名类，它有一个隐藏的构造函数参数来引用外部类。
+
+```java
+android.support.v4.app.Fragment$InstantiationException:
+    Unable to instantiate fragment com.squareup.MyActivity$1:
+    make sure class name exists, is public, and has an empty
+    constructor that is public
+```
+
+#### Fragment的经验教训
+尽管存在缺点，Fragment教给我们宝贵的教训，让我们在编写app的时候可以重用：
+
+单Activity界面：没有必要为每个界面使用一个activity。我们可以分割我们的app为解耦的组件然后根据需要进行组合。这使得动画和生命周期变得简单。我们可以把组件代码分割成视图代码和控制器代码。
+返回栈不是activity特性的概念；我们可以在一个activity中实现返回栈。
+没有必要使用新的API；我们所需要的一切都是早就存在的：activities，views和layout inflaters。
+
+### 响应式UI：Fragment vs 自定义views
+
+##### Fragment
+让我们看一个fragment的简单例子，一个列表和详情UI。<br>
+`HeadlinesFragment`是一个简单的列表：
+
+```java
+public class HeadlinesFragment extends ListFragment {
+  OnHeadlineSelectedListener mCallback;
+ 
+  public interface OnHeadlineSelectedListener {
+    void onArticleSelected(int position);
+  }
+ 
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setListAdapter(
+        new ArrayAdapter<String>(getActivity(),
+            R.layout.fragment_list,
+            Ipsum.Headlines));
+  }
+ 
+  @Override
+  public void onAttach(Activity activity) {
+    super.onAttach(activity);
+    mCallback = (OnHeadlineSelectedListener) activity;
+  }
+ 
+  @Override
+  public void onListItemClick(ListView l, View v, int position, long id) {
+    mCallback.onArticleSelected(position);
+    getListView().setItemChecked(position, true);
+  }
+}
+```
+接下来比较有趣：ListFragmentActivity到底需要处理相同界面上的细节还是不需要呢？
+
+```java
+public class ListFragmentActivity extends Activity
+    implements HeadlinesFragment.OnHeadlineSelectedListener {
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.news_articles);
+    if (findViewById(R.id.fragment_container) != null) {
+      if (savedInstanceState != null) {
+        return;
+      }
+      HeadlinesFragment firstFragment = new HeadlinesFragment();
+      firstFragment.setArguments(getIntent().getExtras());
+      getFragmentManager()
+          .beginTransaction()
+          .add(R.id.fragment_container, firstFragment)
+          .commit();
+    }
+  }
+  public void onArticleSelected(int position) {
+    ArticleFragment articleFrag =
+        (ArticleFragment) getFragmentManager()
+            .findFragmentById(R.id.article_fragment);
+    if (articleFrag != null) {
+      articleFrag.updateArticleView(position);
+    } else {
+      ArticleFragment newFragment = new ArticleFragment();
+      Bundle args = new Bundle();
+      args.putInt(ArticleFragment.ARG_POSITION, position);
+      newFragment.setArguments(args);
+      getFragmentManager()
+          .beginTransaction()
+          .replace(R.id.fragment_container, newFragment)
+          .addToBackStack(null)
+          .commit();
+    }
+  }
+}
+```
+
+### Custom views
+
+让我们只使用views来重新实现上面代码的相似功能。
+首先，我们定义一个Container的，它可以显示一个item，也可以处理返回键。
+
+```java
+public interface Container {
+  void showItem(String item);
+ 
+  boolean onBackPressed();
+}
+```
+
+Activity假设总会存在一个container，并把工作委托给它。
+
+```java
+public class MainActivity extends Activity {
+  private Container container;
+ 
+  @Override protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.main_activity);
+    container = (Container) findViewById(R.id.container);
+  }
+ 
+  public Container getContainer() {
+    return container;
+  }
+ 
+  @Override public void onBackPressed() {
+    boolean handled = container.onBackPressed();
+    if (!handled) {
+      finish();
+    }
+  }
+}
+```
+
+列表的代码也类似如下：
+
+```java
+public class ItemListView extends ListView {
+  public ItemListView(Context context, AttributeSet attrs) {
+    super(context, attrs);
+  }
+ 
+  @Override protected void onFinishInflate() {
+    super.onFinishInflate();
+    final MyListAdapter adapter = new MyListAdapter();
+    setAdapter(adapter);
+    setOnItemClickListener(new OnItemClickListener() {
+      @Override public void onItemClick(AdapterView<?> parent, View view,
+            int position, long id) {
+        String item = adapter.getItem(position);
+        MainActivity activity = (MainActivity) getContext();
+        Container container = activity.getContainer();
+        container.showItem(item);
+      }
+    });
+  }
+}
+```
+
+接着任务是：基于资源限定符加载不同的XML布局文件。<br>
+
+`res/layout/main_activity.xml：`
+
+```java
+<com.squareup.view.SinglePaneContainer
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/container"
+    >
+  <com.squareup.view.ItemListView
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      />
+</com.squareup.view.SinglePaneContainer>
+```
+
+`res/layout-land/main_activity.xml`
+
+```java
+<com.squareup.view.DualPaneContainer
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:id="@+id/container"
+    >
+  <com.squareup.view.ItemListView
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
+      android:layout_weight="0.2"
+      />
+  <include layout="@layout/detail"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
+      android:layout_weight="0.8"
+      />
+</com.squareup.view.DualPaneContainer>
+```
+
+下面是这些containers的简单实现：
+
+```java
+public class DualPaneContainer extends LinearLayout implements Container {
+  private MyDetailView detailView;
+ 
+  public DualPaneContainer(Context context, AttributeSet attrs) {
+    super(context, attrs);
+  }
+ 
+  @Override protected void onFinishInflate() {
+    super.onFinishInflate();
+    detailView = (MyDetailView) getChildAt(1);
+  }
+ 
+  public boolean onBackPressed() {
+    return false;
+  }
+ 
+  @Override public void showItem(String item) {
+    detailView.setItem(item);
+  }
+}
+```
+
+```java
+public class SinglePaneContainer extends FrameLayout implements Container {
+  private ItemListView listView;
+ 
+  public SinglePaneContainer(Context context, AttributeSet attrs) {
+    super(context, attrs);
+  }
+ 
+  @Override protected void onFinishInflate() {
+    super.onFinishInflate();
+    listView = (ItemListView) getChildAt(0);
+  }
+ 
+  public boolean onBackPressed() {
+    if (!listViewAttached()) {
+      removeViewAt(0);
+      addView(listView);
+      return true;
+    }
+    return false;
+  }
+ 
+  @Override public void showItem(String item) {
+    if (listViewAttached()) {
+      removeViewAt(0);
+      View.inflate(getContext(), R.layout.detail, this);
+    }
+    MyDetailView detailView = (MyDetailView) getChildAt(0);
+    detailView.setItem(item);
+  }
+ 
+  private boolean listViewAttached() {
+    return listView.getParent() != null;
+  }
+}
+```
+抽象出这些container并以这种方式来构建app并不难－我们不仅不需要Fragment，而且代码将是易于理解的。
+
+### Views & presenters
+
+使用自定义views是很棒的，但我们想把业务逻辑分离到专门的controllers中。我们把这些controller称为presenters。这样一来，代码将更加可读，测试更加容易。上面例子中的MyDetailView如下所示：
+
+```java
+public class MyDetailView extends LinearLayout {
+  TextView textView;
+  DetailPresenter presenter;
+ 
+  public MyDetailView(Context context, AttributeSet attrs) {
+    super(context, attrs);
+    presenter = new DetailPresenter();
+  }
+ 
+  @Override protected void onFinishInflate() {
+    super.onFinishInflate();
+    presenter.setView(this);
+    textView = (TextView) findViewById(R.id.text);
+    findViewById(R.id.button).setOnClickListener(new OnClickListener() {
+      @Override public void onClick(View v) {
+        presenter.buttonClicked();
+      }
+    });
+  }
+ 
+  public void setItem(String item) {
+    textView.setText(item);
+  }
+}
+```
+让我们看一下从Square Register中抽取的代码，编辑账号信息的界面如下：
+
+![](http://www.jcodecraeer.com/uploads/20150427/1430117040633427.png)
+
+presenter在高层级操作view：
+
+```java
+class EditDiscountPresenter {
+  // ...
+  public void saveDiscount() {
+    EditDiscountView view = getView();
+    String name = view.getName();
+    if (isBlank(name)) {
+      view.showNameRequiredWarning();
+      return;
+    }
+    if (isNewDiscount()) {
+      createNewDiscountAsync(name, view.getAmount(), view.isPercentage());
+    } else {
+      updateNewDiscountAsync(discountId, name, view.getAmount(),
+        view.isPercentage());
+    }
+    close();
+  }
+}
+```
+为这个presenter编写测试是轻而易举的事：
+
+```java
+@Test public void cannot_save_discount_with_empty_name() {
+  startEditingLoadedPercentageDiscount();
+  when(view.getName()).thenReturn("");
+  presenter.saveDiscount();
+  verify(view).showNameRequiredWarning();
+  assertThat(isSavingInBackground()).isFalse();
+}
+```
+
+
+`返回栈管理`
+管理返回栈不需要异步事务，我们发布了一个小的函数库[Flow](https://github.com/square/flow/)来实现这个功能。[Ray Ryan](https://twitter.com/rjrjr)写了一篇很赞的博文介绍[Flow](https://github.com/square/flow/)。
+
+
+我已经深陷在Fragment的泥沼中，我如何逃离呢？<br>
+把Fragment做成空壳，把view相关的代码写到自定义view类中，把业务逻辑代码写到presenter中，由presenter和自 定义views进行交互。这样一来，你的fragment几乎就是空的了，只需要在其中inflate自定义views，并把views和 presenters关联起来。
+
+```java
+public class DetailFragment extends Fragment {
+  @Override public View onCreateView(LayoutInflater inflater,
+    ViewGroup container, Bundle savedInstanceState) {
+    return inflater.inflate(R.layout.my_detail_view, container, false);
+  }
+}
+```
+
+到这里，你可以消除fragment了。
+
+从fragments模式移植过来并不容易，但我们做到了－感谢[Dimitris Koutsogiorgas](https://twitter.com/dnkoutso) 和 [Ray Ryan](https://twitter.com/rjrjr)的杰出工作。
+
+Dagger&Mortar如何呢？
+Dagger&Mortar和fragments是正交的，它们可以和fragments一起工作，也可以脱离fragments而工作。
+[Dagger](http://square.github.io/dagger/)帮助我们把app模块化成一个解耦的组件图。他处理所有的绑定，使得可以很容易的提取依赖并编写自相关对象。
+
+[Mortar](https://github.com/square/mortar)工作于Dagger之上，它具有两大优点：
+
+- 它为被注入组件提供简单的生命周期回调。这使你可以编写在屏幕旋转时不会被销毁的presenters单例，而且可以保存状态到bundle中从而在进程死亡中存活下来。
+- 它为你管理Dagger子图，并帮你把它绑定到activity的生命周期中。这让你有效的实现范围的概念：一个views生成的时候，它的presenter和依赖会作为子图创建；当views销毁的时候，你可以很容易的销毁这个范围，并让垃圾回收起作用。
+
+## 结论
+我们曾经大量的使用fragments，但最终改变了我们的想法：
+
+- 我们很多疑难的crashes都和fragment生命周期相关；
+- 我们只需要views来构建响应式的UI，一个返回栈和屏幕转场功能。
+
+
+
+### 写在最后
+
+这篇文章是我对[Advocating Against Android Fragments](https://medium.com/square-corner-blog/advocating-against-android-fragments-81fd0b462c97)的简单翻译，翻译的不好的地方，请大家见谅。
+
+这篇文章原作者的发布时间大概是两年前，其中一些观念现在来看其实就很容易理解了，其核心思想就是对Fragment进行解耦，不想Fragment承担太多的责任，利用组合view实现响应式UI交互，并提供了简单的生命周期管理。其实，我们大家很熟悉的`MVP`的架构思想正好跟原作者的思路殊途同归～
+
+
+
+
+
+
+
+
