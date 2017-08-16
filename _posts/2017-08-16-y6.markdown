@@ -1,0 +1,452 @@
+---
+layout:     post
+title:      "聊聊Android中的消息推送（二）"
+subtitle:   ""
+date:       2017-08-16 13:05:14
+author:     "Yuhj"
+header-img: "img/post-bg-nextgen-web-pwa.jpg"
+header-mask: 0.3
+catalog:    true
+description: 推送之难，难于上青天
+tags:
+    - Android
+    - 推送
+    - 进程保活
+    - 用户留存
+    
+---
+## 引言
+众所周知，消息推送对提高产品用户的活跃度以及用户留存都有着至关重要的作用。今天我们就从提高push 到达率和提高用户留存两个角度来具体聊一聊Android中的推送实现。
+
+
+## 到达率提升
+
+### 概述
+众所周知 Google 退出中国市场后，各家厂商在 `Android` 底层的定制修改，使得国内 `Android`平台更加分化。其中小米，华为，魅族推出了自家的厂商`Push SDK`  ，`BAT`也推出了Umeng推送、极光、个推等推送联盟平台，这也使得开发者选择时不知所措。据我所知现在很多App都接入了多家推送以保证推送的送达率。不同的推送平台也会针对接入自家推送`SDK`的 App 互相唤起，这也是为了保证自家推送送达率，否则送达低了谁还用呢，毕竟企业也是要生存的。其实这正是国内 `Android`的乱象之一，这也使得`Android`的用户抱怨不断，实在是进入了一个怪圈之中。<br>
+
+以上说了这么多，并不能解决我们的问题，虽然我本人对国内现有的推送现状表示深恶痛绝，但是既然存在于这个大环境之中，我们就只能想些办法去适应它。
+
+### 推送及保活
+
+下面我们看看推送的简单实现，请看下图：<br>
+
+![](/image/2017-8-16/a1.png)
+
+这就是一个非常简单的推送模型，服务器向 Push 服务器发布推送消息，推送服务器经过处理按照要求将推送消息通过长链接通道将消息推送至 App 。
+
+#### 皮之不存，毛将焉附
+我们知道`Push`服务器想要成功的将消息推送至客户端真正的关键就是这个长链接的稳定性，各家推送服务也都对这个长链接做了很多优化，比如通道共享、透传等。对于`Android`来说通常的做法是通过 Service 维持一个长链接，定时发送心跳包以保证实时在线。
+
+推送`Service` 依赖于应用进程的状态，进程作为载体，进程处于运行状态，`Service` 才能正常工作，一但进程被杀死，推送`Service` 自然也无法运行，进而也就无法收到推送消息。
+
+那么我们首先解决进程存活的问题，在这之前，简单的说明一下进程及资源的冲突问题，大家应该知道，每个进程的启动都意味着消耗掉一部分手机资源，比如 CPU ，内存等。而像内存这样的资源在手机中其实是相当宝贵的，系统为了保证自身运行的稳定性以及前台 App 的性能，在必要时会触发资源回收的机制，在 Android 中这种机制被称之为 `LowMemoryKiller` 。
+
+`Android`基于`Linux`的系统，其实`Linux`有类似的内存管理策略——`OOM killer`，全称(`Out Of Memory Killer`), `OOM`的策略更多的是用于分配内存不足时触发，将得分最高的进程杀掉。而`LowMemoryKiller`则会每隔一段时间检查一次，当系统剩余可用内存较低时，便会触发杀进程的策略，根据不同的剩余内存档位来来选择杀不同优先级的进程，而不是等到OOM时再来杀进程，真正OOM时系统可能已经处于异常状态，系统更希望的是未雨绸缪，在内存很低时来杀掉一些优先级较低的进程来保障后续操作的顺利进行。
+
+#### 进程保活
+
+Android 进程拉活包括两个层面：
+
+- 提供进程优先级，降低进程被杀死的概率
+
+- 在进程被杀死后，进行拉活
+
+下面介绍一下具体的保活方案：
+
+##### 利用 `Activity`保活
+
+监控手机锁屏解锁事件，在屏幕锁屏时启动1个像素的 Activity，在用户解锁时将 Activity 销毁掉。注意该 Activity 需设计成用户无感知。通过该方案，可以使进程的优先级在屏幕锁屏时间由最高优先级。
+
+`注意`：在部分系统上，系统会检测这种透明的Activity并提醒用户“XXX引用正在前台显示。”
+
+##### 前台`Service`
+`Android` 中 `Service` 的优先级为4，通过 `setForeground` 接口可以将后台 `Service` 设置为前台 `Service`，使进程的优先级由4提升为2，从而使进程的优先级仅仅低于用户当前正在交互的进程，与可见进程优先级一致，使进程被杀死的概率大大降低。
+
+``` java
+public class KeepAliveService extends Service {
+
+    static final int NOTIFICATION_ID = 1001;
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+
+        try{
+            Log.d("yuyu", "KeepAliveService onStartCommand invoke");
+            startForeground(NOTIFICATION_ID, getNotification(this));
+
+            Intent innerIntent = new Intent(this, InnerService.class);
+            startService(innerIntent);
+
+        }catch (Exception e){
+            //nothing to do
+        }
+        // 利用系统自启
+        return START_STICKY;
+    }
+
+    public static class InnerService extends Service {
+
+        @Nullable
+        @Override
+        public IBinder onBind(Intent intent) {
+            return null;
+        }
+
+        @Override
+        public int onStartCommand(Intent intent, int flags, int startId) {
+
+            try{
+                Log.d("yuyu", "InnerService onStartCommand invoke");
+                startForeground(NOTIFICATION_ID, getNotification(this));
+                stopSelf();
+            }catch (Exception e){
+                //nothing to do
+            }
+            return super.onStartCommand(intent, flags, startId);
+        }
+    }
+
+    private static Notification getNotification(Context ctx){
+        Notification notify = new NotificationCompat.Builder(ctx)
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setContentTitle("")
+                .setContentText("")
+                .setAutoCancel(true)
+                .build();
+        return notify;
+    }
+}
+```
+
+#### 进程唤醒
+
+##### 利用系统广播拉活
+在发生特定系统事件时，系统会发出响应的广播，通过在 AndroidManifest 中“静态”注册对应的广播监听器，即可在发生响应事件时拉活。
+
+`适用范围`：Android全版本<br>
+
+`缺点`:
+
+- 广播接收器被管理软件、系统软件通过“自启管理”等功能禁用的场景无法接收到广播，从而无法自启。
+
+- 系统广播事件不可控，只能保证发生事件时拉活进程，但无法保证进程挂掉后立即拉活。
+
+##### 利用第三方应用广播拉活
+
+该方案总的设计思想与接收系统广播类似，不同的是该方案为接收第三方 Top 应用广播。
+
+通过反编译第三方 Top 应用，如：手机QQ、微信、支付宝、UC浏览器等，以及友盟、信鸽、个推等 SDK，找出它们外发的广播，在应用中进行监听，这样当这些应用发出广播时，就会将我们的应用拉活。<br>
+
+`适用范围`：Android全版本
+
+`缺点`:
+
+- 反编译难度大
+- 第三方应用的广播属于应用私有，当前版本中有效的广播，在后续版本随时就可能被移除或被改为不外发。
+
+##### 利用`Native`进程拉活
+
+利用 `Linux` 中的`fork`机制创建`Native`进程，在`Native`进程中监控主进程的存活，当主进程挂掉后，在 Native 进程中立即对主进程进行拉活。
+
+`适用范围`：Android 5.0以下版本
+
+`缺点`:
+
+- 非常耗电
+- 对于 Android5.0 以上手机，系统虽然会将native进程内的所有进程都杀死。
+
+##### 利用`JobScheduler`机制拉活
+在 Android 5.0 以后系统收紧了进程的管理，以节约用户电量消耗，但仍然提供以一个新的 `JobScheduler API` ，允许应用在某个时间或者指定的条件下（例如，设备充电时）异步执行任务。官方推出这个 API 的出发点是好的，但也让我们有空子可钻。
+
+``` java
+@TargetApi(Build.VERSION_CODES.LOLLIPOP)
+public class WakeUpService extends JobService{
+    @Override
+    public boolean onStartJob(JobParameters jobParameters) {
+        Log.d("nuts", "WakeUpService onStartJob");
+        // to start push service or something else
+        Intent daemonIntent = new Intent(this, KeepAliveService.class);
+        startService(daemonIntent);
+        return false;
+    }
+
+    @Override
+    public boolean onStopJob(JobParameters jobParameters) {
+        return false;
+    }
+  
+    public static void startJobScheduler(Context ctx) {
+        try {
+            int jobId = 1002;
+            JobInfo.Builder builder = new JobInfo.Builder(jobId, new ComponentName(ctx, WakeUpService.class));
+                       builder.setPeriodic(1000 * 5);
+            builder.setPersisted(true);
+
+            JobScheduler jobScheduler = (JobScheduler) ctx.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            jobScheduler.schedule(builder.build());
+            
+        }catch (Throwable e){
+
+        }
+    }
+}
+```
+
+`适用范围`:Android 5.0以上系统
+
+##### 利用账号同步机制拉活
+Android 系统的账号同步机制会定期同步账号进行，该方案目的在于利用同步机制进行进程的拉活。
+
+``` java
+public abstract class AccountManager {
+    private static final int SYNC_PERIOD = 9 * 100;
+
+    public abstract String getAccountAuthority();
+
+    public void addAutoSyncAccount(Context context) {
+        if (context == null) {
+            return;
+        }
+        try {
+            String accountType = context.getPackageName();
+            int resId = context.getApplicationInfo().labelRes;
+            String accountName = context.getString(resId);
+            if (TextUtils.isEmpty(accountName) || TextUtils.isEmpty(accountType)) {
+                return;
+            }
+            Account account = new Account(accountName, accountType);
+            android.accounts.AccountManager accountManager = android.accounts.AccountManager.get(context);
+            if (accountManager.addAccountExplicitly(account, null, null)) {
+                ContentResolver.setIsSyncable(account, getAccountAuthority(), 1);
+                ContentResolver.setSyncAutomatically(account, getAccountAuthority(), true);
+                ContentResolver.addPeriodicSync(account, getAccountAuthority(), new Bundle(), SYNC_PERIOD);
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+`适用范围`:Android 全版本
+
+
+以上便是常用的一些进程保活的方案，没有绝对意义上的保活，随着手机系统的升级，厂商对进程的管理越来越严格，保活方案不是一劳永逸的，我们其实是在和厂商斗智斗勇，不断的研究新的保活方案。当然，我们最终的理想是国内的推送能像`Google`的`GCM`一样，到达率高并且对用户体验无伤害。
+
+
+### 提高用户留存
+
+当留存率过低时，高质量的消息推送是提高留存率的措施之一。上面我们已经说过了提高Push的到达率，下面我将从以下几个方面聊聊如何通过推送提高用户留存:
+
+- 提高用户选择允许启用推送消息的机率。
+- 如何提高用户点击率。
+
+#### 通知权限
+
+我们都知道，push在到达APP后，客户端会发送一个`Notification`来呈现推送。那么，客户端是否被用户授予通知权限就显得非常重要，负责，即使Push到达，用户也看不见。据调查，`OPPO`手机默认不授予通知权限，也就是在`OPPO`手机上推送几乎不可到达。
+
+所以，我们需要引导用户去开启权限。具体代码实现如下：
+
+```java
+  public static int areNotificationsEnabled(Context context) {
+        if (context == null) {
+            return -1;
+        }
+        try {
+            AppOpsManager appOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
+            ApplicationInfo appInfo = context.getApplicationInfo();
+            String pkg = context.getApplicationContext().getPackageName();
+            int uid = appInfo.uid;
+            Reflect appOpsRef = Reflect.on(appOps);
+            int value = appOpsRef.field(OP_POST_NOTIFICATION, int.class).get();
+            int result = appOpsRef.call(CHECK_OP_NO_THROW,
+                    new Class[]{int.class, int.class, String.class},
+                    new Object[]{value, uid, pkg}).get();
+            if (result == AppOpsManager.MODE_ALLOWED) {
+                return 1;
+            } else {
+                return 0;
+            }
+        } catch (Throwable t) {
+            // ignore
+            t.printStackTrace();
+        }
+        return -1;
+    }
+ ```
+
+判断用户是否有通知权限，如果没有，则跳转到应用设置页。各个厂商跳转到权限详情页的方法各不相同，具体如下：
+
+```java
+  public static void openSettingActivity(Context context) {
+        if (context == null) {
+            return;
+        }
+        boolean isOpen = tryOpenPermissionSetting(context);
+        if (isOpen) {
+            return;
+        }
+        isOpen = tryOpenAppInfo(context);
+        if (isOpen) {
+            return;
+        }
+        tryOpenSetting(context);
+    }
+
+    private static boolean tryOpenPermissionSetting(Context context) {
+        try {
+            Intent intent = null;
+            String brand = Build.MANUFACTURER.toLowerCase();
+            if (TextUtils.equals(brand, "oppo")) {
+                intent = getOppoPermissinIntent(context);
+            } else if (TextUtils.equals(brand, "huawei")) {
+                intent = getHuaweiPermissinIntent();
+            } else if (TextUtils.equals(brand, "xiaomi")) {
+                intent = getXiaomiPersissinIntent();
+            } else if (TextUtils.equals(brand, "meizu")) {
+                intent = getMeizuPermissinIntent();
+            }
+            context.startActivity(intent);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+        //return false;
+    }
+
+    private static boolean tryOpenAppInfo(Context context) {
+        try {
+            Uri packageURI = Uri.parse("package:" + context.getPackageName());
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageURI);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean tryOpenSetting(Context context) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+
+
+    private static Intent getOppoPermissinIntent(Context context) {
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.PermissionManagerActivity"));
+        intent.putExtra("pkg_name", context.getPackageName());
+        intent.putExtra("app_name", context.getResources().getString(context.getApplicationInfo().labelRes));
+        intent.putExtra("class_name", FactoryPermissionUtils.class.getName());
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        return intent;
+    }
+
+    private static Intent getMeizuPermissinIntent() {
+        Intent intent = new Intent("com.meizu.safe.security.SHOW_APPSEC");
+        intent.addCategory(Intent.CATEGORY_DEFAULT);
+        intent.putExtra("packageName", BuildConfig.APPLICATION_ID);
+        return intent;
+    }
+
+    private static Intent getHuaweiPermissinIntent() {
+        Intent intent = new Intent();
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.putExtra("packageName", BuildConfig.APPLICATION_ID);
+        ComponentName comp = new ComponentName("com.android.packageinstaller", "com.android.packageinstaller.permission.ui.ManagePermissionsActivity");
+        intent.setComponent(comp);
+        return intent;
+    }
+
+    private static Intent getXiaomiPersissinIntent() {
+        Intent intent = new Intent("miui.intent.action.APP_PERM_EDITOR");
+        ComponentName componentName = new ComponentName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity");
+        intent.setComponent(componentName);
+        intent.putExtra("extra_pkgname", BuildConfig.APPLICATION_ID);
+        return intent;
+    }
+```
+
+以上操作只是引导用户去授权通知权限。如果用户确实不授予权限，在极端情况下可以绕过系统权限利用`WindownsManager`来模仿系统通知的样式给用户进行推送。代码如下:
+
+```java
+mWmManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+
+this.mWinParams = new WindowManager.LayoutParams();
+    // 设置图片格式，效果为背景透明
+    mWinParams.format = PixelFormat.RGBA_8888;
+    // 设置浮动窗口不可聚焦（实现操作除浮动窗口外的其他可见窗口的操作）
+    mWinParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+    // 调整悬浮窗显示的停靠位置为左侧
+    mWinParams.gravity= Gravity.CENTER | Gravity.TOP;
+    mScreenHeight = mWmManager.getDefaultDisplay().getHeight();
+
+    // 以屏幕左上角为原点，设置x、y初始值，相对于gravity
+    mWinParams.x = mScreenWidth/4;
+    mWinParams.y = mScreenHeight/4;
+
+    // 设置悬浮窗口长宽数据
+    mWinParams.width = FrameLayout.LayoutParams.WRAP_CONTENT;
+    mWinParams.height = FrameLayout.LayoutParams.WRAP_CONTENT;
+
+```
+
+##### 如何提高用户点击率
+
+##### 用户活跃时间到达
+
+用户每天真正使用APP的使用有限，而我们发送Push的时间却不固定，如何保证推送能够在用户活跃的时间准确到达？
+
+我们目前采取的方案是客户端每天会预期一些推送消息（及时性不高的消息）缓存在客户端，然后再用户进程活跃的时候将已缓存的推送发给用户，已避免用户活跃时间没有送达到。
+
+##### push带图
+
+用户每天都可以收到各个APP的很多Push，用户对各式各样的Push不厌其烦，那么如何让我们的Push脱颖而出呢？传统的通知图标是APP自带的icon，我们希望通知图标能够是跟push相关的图片，即push自定义图标，具体代码如下：
+
+```java
+Drawable drawable = context.getResources().getDrawable(com.ss.android.newmedia.R.drawable.icon);
+            Bitmap icon = null;
+            if (drawable instanceof BitmapDrawable) {
+                icon = ((BitmapDrawable) drawable).getBitmap();
+            }
+            builder.setContentTitle(title).setContentText(text)
+                    .setStyle(new NotificationCompat.BigTextStyle().bigText(text)).setLargeIcon(icon).setWhen(time);
+            if (Build.VERSION.SDK_INT > 20) {
+                builder.setFullScreenIntent(pendingIntent, true);
+                builder.setPriority(NotificationCompat.PRIORITY_HIGH);
+                builder.setVibrate(new long[0]);
+            }
+            if (mBigPicStyle != null) {
+                notification = builder.setStyle(mBigPicStyle).build();
+            } else if (pushBitmap != null && imageType != TYPE_IMAGE_NONE) {
+                Bitmap proxy = null;
+                try {
+                    proxy = Bitmap.createBitmap(pushBitmap.getWidth(), pushBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+                    Canvas c = new Canvas(proxy);
+                    c.drawBitmap(pushBitmap, new Matrix(), null);
+                } catch (Exception e) {
+                    proxy = pushBitmap;
+                    e.printStackTrace();
+                }
+                notification = builder.setLargeIcon(proxy).build();
+            } else {
+                notification = builder.build();
+            }
+ ```
+ 
+ 以上是客户端所做的关于提高Push点击率的一些方法，还有一些比较激进的策略，比如在重要推送应用内弹窗提醒等。同时，运营也可以用过Push的类型，文案以及内容来提高用户的点击率。至于长线的用户留存，主要是依赖于Push的发送机制，包括新用户增发Push以及非日活用户的Push召回策略。
+ 
+ 
+
