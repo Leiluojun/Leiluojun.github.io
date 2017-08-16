@@ -142,7 +142,7 @@ public class KeepAliveService extends Service {
 
 通过反编译第三方 Top 应用，如：手机QQ、微信、支付宝、UC浏览器等，以及友盟、信鸽、个推等 SDK，找出它们外发的广播，在应用中进行监听，这样当这些应用发出广播时，就会将我们的应用拉活。<br>
 
-`适用范围`：Android全版本
+`适用范围`：Android全版本<br>
 `缺点`:
 
 - 反编译难度大
@@ -152,7 +152,7 @@ public class KeepAliveService extends Service {
 
 利用 `Linux` 中的`fork`机制创建`Native`进程，在`Native`进程中监控主进程的存活，当主进程挂掉后，在 Native 进程中立即对主进程进行拉活。
 
-`适用范围`：Android 5.0以下版本
+`适用范围`：Android 5.0以下版本<br>
 `缺点`:
 
 - 非常耗电
