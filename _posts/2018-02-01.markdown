@@ -1,0 +1,122 @@
+---
+layout:     post
+title:      "浅谈应用连续启动崩溃保护"
+subtitle:   ""
+date:       2018-02-01 12:14:14
+author:     "Yuhj"
+header-img: "img/post-bg-nextgen-web-pwa.jpg"
+header-mask: 0.3
+catalog:    true
+description: 
+tags:
+    - Android
+    - 启动保护
+    - 崩溃
+    - Crash
+    
+---
+## 引言
+对于一个大型的商业应用来说，应用的稳定性是至关重要的，crash率是衡量应用稳定性的最核心指标。线上出现大面积的崩溃导致功能各种不可用，那画面太美简直不可想象。由于线上版本发布时间慢以及新版本的覆盖率较低，所以我们经常寻求一种快速修复的方式，所以各种HotFix方案就应运而生了。HotFix在一定程度上保障了性能同时提供了一道紧急修复的保障线。<br>
+但是如果经过我们层层把关之后线上还是出了问题，我们需要怎么解决？众所周知，HotFix的下载和安装以及生效是需要一定时间的，如果crash发生的时机太早，HotFix不能生效，这时候难道我们就束手无策了吗？
+
+### 什么是启动崩溃？
+
+启动崩溃指在用户启动APP 5s之内发生的发生的crash，此时因为crash的时机太早，HotFix和强制升级来不及生效，应用会直接陷入完全不可用的绝境，最终的命运一定是被用户所卸载。
+
+### 为什么会发生启动崩溃？
+
+商业级应用一般在启动的时机会做很多事情，从而增加了启动Crash的可能性，启动崩溃的诱因可能有：
+
+- 各种文件或数据库操作失败
+- 服务端下发了脏数据
+- 升级导致的兼容性问题
+- 其他常见的崩溃，空指针，数组越界等。
+
+抖音在版本迭代的过程中共发生了两次比较严重的启动崩溃：
+
+- Fresco在未初始化完成就在启动时加载图片 累计crash次数超过1000w次。
+- 老用户升级Sharedpreference没有兼容老版本 发生数组越界crash，累计crash次数超过20w次。
+
+因为发生的时机太早，我们不能线上修复问题，只能让用户卸载后去应用市场重新下载，造成了比较严重的损失。
+
+### 如何避免启动崩溃？
+
+#### 检测启动崩溃
+最常见的捕捉crash的方式是`UncaughtExceptionHandler `，但这种方式没办法捕捉Native的崩溃。所以我们采用逆向思维去处理：
+
+- 维护一个启动崩溃的次数（需要持久化存储），应用进入APP就够crashCount加1，如果启动10s后没有crash就将crashCount置为0。
+- crashCount大于界定值，则认为发生了连续启动崩溃。
+- 用户主动退出，将crashCount置为0。
+
+#### 如何修复崩溃？
+
+首先，我们给启动crash分级：
+
+- 启动发生一次Crash，为一级。
+- 连续两次Crash，为二级。
+- 连续三次Crash，为三级。
+
+针对不同的crash级别，我们采用不同的处理方案：
+
+- 一级crash，我们只是做简单的进程重启。
+- 二级crash，清除所有数据（缓存，Sharedpreference等）
+- 三级Crash，阻塞UI线程，等待HotFix。
+
+```java
+public class ProtectorTask implements AmeTask {
+    @Override
+    public void run() {
+        AwemeProtector.getInstance()
+                .addSynchronousTask(new FixStartCrashTask())
+                .setCrashCallBack(new CrashCallBack() {
+                    @Override
+                    public void uncaughtException(Throwable ex, String crashMsg) {
+                        Crashlytics.logException(ex);
+                    }
+                })
+                .addCrashManager(new CrashManager() {
+                    @Override
+                    public boolean ifRestart(String crashMsg) {
+                        return true;
+                    }
+                })
+                .init(AwemeApplication.getApplication());
+    }
+}
+
+```
+
+```java
+public class FixStartCrashTask extends com.ugc.aweme.protector.iprotector.ProtectorTask {
+
+    @Override
+    public void doInBackground() {
+        Worker.postMain(new Runnable() {
+            @Override
+            public void run() {
+                ProtectorLoadingActivity.setOnActivityFinishCallBack(new ProtectorLoadingActivity.OnActivityFinishCallBack() {
+                    @Override
+                    public void onFinish() {
+                        onPostExecute();
+                    }
+                });
+                Intent intent = new Intent(AwemeApplication.getApplication(), ProtectorLoadingActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                AwemeApplication.getApplication().startActivity(intent);
+            }
+        });
+        AwemeProtectorLogUtils.i("I'm trying to hotfix");
+
+    }
+}
+
+```
+
+如果检测到连续启动crash，需要阻塞UI线程，等待patch下载并安装成功后再进入App。
+
+
+#### 写在最后
+
+启动崩溃保护只是一种应用线上稳定性的一种兜底策略，我们不能太依赖HotFix等修复方案，还是应该更好的保证开发质量，有问题尽量在测试阶段暴露出来并予以解决，尽量保证线上版本的稳定性。希望崩溃保护永远也用不到上～
+
+
