@@ -2,7 +2,7 @@
 layout:     post
 title:      "聊聊Android中的消息推送（二）"
 subtitle:   ""
-date:       2017-08-16 13:05:14
+date:       2018-07-16 13:05:14
 author:     "Yuhj"
 header-img: "img/post-bg-nextgen-web-pwa.jpg"
 header-mask: 0.3
@@ -59,8 +59,12 @@ Android 进程拉活包括两个层面：
 
 `注意`：在部分系统上，系统会检测这种透明的Activity并提醒用户“XXX引用正在前台显示。”
 
+此外还要注意一点，需要设置Activity的taskAffinity 属性，要与我们的应用默认的taskAffinity不同，否则当这个Activity启动的时候，会把我们的应用所在的任务栈移动到前台，当屏幕解锁之后，会发现我们的应用移动到前台了。而用户在息屏的时候明明已经把我们的应用切换到后台了，这会给用户造成困扰。
+
 ##### 前台`Service`
-`Android` 中 `Service` 的优先级为4，通过 `setForeground` 接口可以将后台 `Service` 设置为前台 `Service`，使进程的优先级由4提升为2，从而使进程的优先级仅仅低于用户当前正在交互的进程，与可见进程优先级一致，使进程被杀死的概率大大降低。
+`Android` 中 `Service` 的优先级为4，应用启动一个`Service`，并且Service通过调用`startForeground`方法来绑定一个前台的通知时，可以有效的提升进程的优先级。，使进程的优先级由4提升为2，从而使进程的优先级仅仅低于用户当前正在交互的进程，与可见进程优先级一致，使进程被杀死的概率大大降低。
+
+startForeground会在通知栏中显示一个通知。有一种方式利用了系统漏洞，把通知栏给隐藏，让用户无感知。不过这种方式跟版本有关：
 
 ``` java
 public class KeepAliveService extends Service {
@@ -76,17 +80,18 @@ public class KeepAliveService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
-        try{
-            Log.d("yuyu", "KeepAliveService onStartCommand invoke");
-            startForeground(NOTIFICATION_ID, getNotification(this));
-
-            Intent innerIntent = new Intent(this, InnerService.class);
-            startService(innerIntent);
-
-        }catch (Exception e){
-            //nothing to do
+       try {
+        Notification notification = new Notification();
+        if (Build.VERSION.SDK_INT < 18) {
+            startForeground(NOTIFICATION_ID, notification);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+            // start InnerService
+            startService(new Intent(this, InnerService.class));
         }
-        // 利用系统自启
+    } catch (Throwable e) {
+        e.printStackTrace();
+    }        // 利用系统自启
         return START_STICKY;
     }
 
@@ -407,6 +412,7 @@ this.mWinParams = new WindowManager.LayoutParams();
 用户每天真正使用APP的使用有限，而我们发送Push的时间却不固定，如何保证推送能够在用户活跃的时间准确到达？
 
 我们目前采取的方案是客户端每天会预期一些推送消息（及时性不高的消息）缓存在客户端，然后再用户进程活跃的时候将已缓存的推送发给用户，已避免用户活跃时间没有送达到。
+
 
 ##### push带图
 
